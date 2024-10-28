@@ -1,16 +1,16 @@
 import pygame
-import math
+from heapq import heappush, heappop
 
-# Configuraciones iniciales para Pygame
-ANCHO_VENTANA = 800
+# Configuraciones iniciales
+ANCHO_VENTANA = 700
 VENTANA = pygame.display.set_mode((ANCHO_VENTANA, ANCHO_VENTANA))
-pygame.display.set_caption("Visualización de Nodos")
+pygame.display.set_caption("Visualización de A*")
 
 # Colores (RGB)
 BLANCO = (255, 255, 255)
 NEGRO = (0, 0, 0)
 GRIS = (128, 128, 128)
-VERDE = (0, 255, 0)
+VERDE = (0, 255, 0)  # Para el camino
 ROJO = (255, 0, 0)
 NARANJA = (255, 165, 0)
 PURPURA = (128, 0, 128)
@@ -24,11 +24,7 @@ class Nodo:
         self.color = BLANCO
         self.ancho = ancho
         self.total_filas = total_filas
-        self.g = 0
-        self.h = 0
-        self.f = 0
-        self.Padre = None
-        self.bloqueado = False
+        self.vecinos = []
 
     def get_pos(self):
         return self.fila, self.col
@@ -44,23 +40,35 @@ class Nodo:
 
     def restablecer(self):
         self.color = BLANCO
-        self.bloqueado = False
 
     def hacer_inicio(self):
         self.color = NARANJA
 
     def hacer_pared(self):
         self.color = NEGRO
-        self.bloqueado = True
 
     def hacer_fin(self):
         self.color = PURPURA
 
     def hacer_camino(self):
         self.color = VERDE
+    
+    def hacer_vecino(self):
+        self.color = GRIS
 
     def dibujar(self, ventana):
         pygame.draw.rect(ventana, self.color, (self.x, self.y, self.ancho, self.ancho))
+
+    def get_vecinos(self, grid):
+        self.vecinos = []
+        if self.fila > 0 and not grid[self.fila - 1][self.col].es_pared():  # Arriba
+            self.vecinos.append(grid[self.fila - 1][self.col])
+        if self.fila < self.total_filas - 1 and not grid[self.fila + 1][self.col].es_pared():  # Abajo
+            self.vecinos.append(grid[self.fila + 1][self.col])
+        if self.col > 0 and not grid[self.fila][self.col - 1].es_pared():  # Izquierda
+            self.vecinos.append(grid[self.fila][self.col - 1])
+        if self.col < self.total_filas - 1 and not grid[self.fila][self.col + 1].es_pared():  # Derecha
+            self.vecinos.append(grid[self.fila][self.col + 1])
 
 def crear_grid(filas, ancho):
     grid = []
@@ -79,10 +87,16 @@ def dibujar_grid(ventana, filas, ancho):
         for j in range(filas):
             pygame.draw.line(ventana, GRIS, (j * ancho_nodo, 0), (j * ancho_nodo, ancho))
 
-def dibujar(ventana, grid, filas, ancho):
+def dibujar(ventana, grid, filas, ancho, path=None):
     ventana.fill(BLANCO)
-    for fila in grid:
-        for nodo in fila:
+
+    for row in grid:
+        for nodo in row:
+            nodo.dibujar(ventana)
+
+    if path:
+        for nodo in path:
+            nodo.hacer_camino()
             nodo.dibujar(ventana)
 
     dibujar_grid(ventana, filas, ancho)
@@ -95,71 +109,67 @@ def obtener_click_pos(pos, filas, ancho):
     col = x // ancho_nodo
     return fila, col
 
-def heuristica(nodo1, nodo2):
-    x1, y1 = nodo1.get_pos()
-    x2, y2 = nodo2.get_pos()
-    return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+def heuristic(p1, p2):
+    x1, y1 = p1
+    x2, y2 = p2
+    return abs(x1 - x2) + abs(y1 - y2)
 
-def reconstruir_camino(came_from, nodo_actual, dibujar):
-    while nodo_actual in came_from:
-        nodo_actual = came_from[nodo_actual]
-        nodo_actual.hacer_camino()
-        dibujar()
+def reconstruct_path(came_from, current):
+    path = []
+    while current in came_from:
+        current = came_from[current]
+        path.append(current)
+    return path
 
-def algoritmo(grid, start, end, dibujar):
-    conocidos = []
-    conocidos.append(start)
-
+def a_star_search(draw, grid, start, end):
+    count = 0
+    open_set = []
     came_from = {}
 
-    start.g = 0
-    start.f = heuristica(start, end)
+    heappush(open_set, (0, count, start))
+    g_score = {spot: float("inf") for row in grid for spot in row}
+    g_score[start] = 0
+    f_score = {spot: float("inf") for row in grid for spot in row}
+    f_score[start] = heuristic(start.get_pos(), end.get_pos())
 
-    while len(conocidos) > 0:
-        # Ordenamos los nodos conocidos por el valor de f
-        conocidos.sort(key=lambda nodo: nodo.f)
+    open_set_hash = {start}
 
-        nodo_actual = conocidos.pop(0)
+    while open_set:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
 
-        if nodo_actual == end:
-            reconstruir_camino(came_from, end, dibujar)
-            end.hacer_fin()
+        current = heappop(open_set)[2]
+        open_set_hash.remove(current)
+
+        if current == end:
+            path = reconstruct_path(came_from, end)
+            draw(path)
             return True
 
-        vecinos = [
-            (nodo_actual.fila - 1, nodo_actual.col),  # Arriba
-            (nodo_actual.fila + 1, nodo_actual.col),  # Abajo
-            (nodo_actual.fila, nodo_actual.col - 1),  # Izquierda
-            (nodo_actual.fila, nodo_actual.col + 1)   # Derecha
-        ]
+        for neighbor in current.vecinos:
+            temp_g_score = g_score[current] + 10
 
-        for fila, col in vecinos:
-            if 0 <= fila < len(grid) and 0 <= col < len(grid[0]):
-                vecino = grid[fila][col]
+            if temp_g_score < g_score[neighbor]:
+                came_from[neighbor] = current
+                g_score[neighbor] = temp_g_score
+                f_score[neighbor] = temp_g_score + heuristic(neighbor.get_pos(), end.get_pos())
 
-                if vecino.bloqueado:
-                    continue
+                if neighbor not in open_set_hash:
+                    count += 1
+                    heappush(open_set, (f_score[neighbor], count, neighbor))
+                    open_set_hash.add(neighbor)
 
-                temp_g_score = nodo_actual.g + 1
+        # Dibuja la actualización del estado actual del grid, sin camino aún
+        draw(None)
 
-                if temp_g_score < vecino.g or vecino not in conocidos:
-                    vecino.g = temp_g_score
-                    vecino.h = heuristica(vecino, end)
-                    vecino.f = vecino.g + vecino.h
-                    vecino.Padre = nodo_actual
-
-                    if vecino not in conocidos:
-                        conocidos.append(vecino)
-
-        dibujar()
-
-        if nodo_actual != start:
-            nodo_actual.hacer_camino()
+        if current != start:
+            current.hacer_vecino()
 
     return False
 
 def main(ventana, ancho):
-    FILAS = 10
+    FILAS = 9
     grid = crear_grid(FILAS, ancho)
 
     inicio = None
@@ -201,11 +211,11 @@ def main(ventana, ancho):
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE and inicio and fin:
-                    for fila in grid:
-                        for nodo in fila:
-                            nodo.Padre = None
+                    for row in grid:
+                        for nodo in row:
+                            nodo.get_vecinos(grid)
 
-                    algoritmo(grid, inicio, fin, lambda: dibujar(ventana, grid, FILAS, ancho))
+                    a_star_search(lambda path: dibujar(ventana, grid, FILAS, ancho, path), grid, inicio, fin)
 
     pygame.quit()
 

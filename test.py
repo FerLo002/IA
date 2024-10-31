@@ -61,14 +61,26 @@ class Nodo:
 
     def get_vecinos(self, grid):
         self.vecinos = []
-        if self.fila > 0 and not grid[self.fila - 1][self.col].es_pared():  # Arriba
-            self.vecinos.append(grid[self.fila - 1][self.col])
-        if self.fila < self.total_filas - 1 and not grid[self.fila + 1][self.col].es_pared():  # Abajo
-            self.vecinos.append(grid[self.fila + 1][self.col])
-        if self.col > 0 and not grid[self.fila][self.col - 1].es_pared():  # Izquierda
-            self.vecinos.append(grid[self.fila][self.col - 1])
-        if self.col < self.total_filas - 1 and not grid[self.fila][self.col + 1].es_pared():  # Derecha
-            self.vecinos.append(grid[self.fila][self.col + 1])
+        # Movimientos ortogonales (arriba, abajo, izquierda, derecha)
+        if self.fila > 0 and not grid[self.fila - 1][self.col].es_pared():
+            self.vecinos.append((grid[self.fila - 1][self.col], 10))  # Costo 10
+        if self.fila < self.total_filas - 1 and not grid[self.fila + 1][self.col].es_pared():
+            self.vecinos.append((grid[self.fila + 1][self.col], 10))  # Costo 10
+        if self.col > 0 and not grid[self.fila][self.col - 1].es_pared():
+            self.vecinos.append((grid[self.fila][self.col - 1], 10))  # Costo 10
+        if self.col < self.total_filas - 1 and not grid[self.fila][self.col + 1].es_pared():
+            self.vecinos.append((grid[self.fila][self.col + 1], 10))  # Costo 10
+
+        # Movimientos diagonales (esquina)
+        if self.fila > 0 and self.col > 0 and not grid[self.fila - 1][self.col - 1].es_pared():
+            self.vecinos.append((grid[self.fila - 1][self.col - 1], 14))  # Costo 14
+        if self.fila > 0 and self.col < self.total_filas - 1 and not grid[self.fila - 1][self.col + 1].es_pared():
+            self.vecinos.append((grid[self.fila - 1][self.col + 1], 14))  # Costo 14
+        if self.fila < self.total_filas - 1 and self.col > 0 and not grid[self.fila + 1][self.col - 1].es_pared():
+            self.vecinos.append((grid[self.fila + 1][self.col - 1], 14))  # Costo 14
+        if self.fila < self.total_filas - 1 and self.col < self.total_filas - 1 and not grid[self.fila + 1][self.col + 1].es_pared():
+            self.vecinos.append((grid[self.fila + 1][self.col + 1], 14))  # Costo 14
+
 
 def crear_grid(filas, ancho):
     grid = []
@@ -125,7 +137,7 @@ def a_star_search(draw, grid, start, end):
     count = 0
     open_set = []
     came_from = {}
-
+     
     heappush(open_set, (0, count, start))
     g_score = {spot: float("inf") for row in grid for spot in row}
     g_score[start] = 0
@@ -147,8 +159,10 @@ def a_star_search(draw, grid, start, end):
             draw(path)
             return True
 
-        for neighbor in current.vecinos:
-            temp_g_score = g_score[current] + 10
+        current.get_vecinos(grid)  # Aseguramos que vecinos esté actualizado
+
+        for neighbor, cost in current.vecinos:
+            temp_g_score = g_score[current] + cost
 
             if temp_g_score < g_score[neighbor]:
                 came_from[neighbor] = current
@@ -160,13 +174,13 @@ def a_star_search(draw, grid, start, end):
                     heappush(open_set, (f_score[neighbor], count, neighbor))
                     open_set_hash.add(neighbor)
 
-        # Dibuja la actualización del estado actual del grid, sin camino aún
         draw(None)
 
         if current != start:
             current.hacer_vecino()
 
     return False
+
 
 def main(ventana, ancho):
     FILAS = 9

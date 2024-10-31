@@ -6,7 +6,7 @@ import graphviz
 # Cargar el dataset
 file_path = 'Dataset_Phaser3.csv'
 dataset = pd.read_csv(file_path)
-
+ 
 # Eliminar columnas innecesarias (como la vacía "Unnamed: 3")
 #dataset = dataset.drop(columns=['Unnamed: 3'])
 

@@ -3,6 +3,10 @@ import random
 import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier, export_graphviz
+import graphviz
 
 # Inicializar Pygame
 pygame.init()
@@ -77,7 +81,7 @@ fondo_x2 = w
 def disparar_bala():
     global bala_disparada, velocidad_bala
     if not bala_disparada:
-        velocidad_bala = random.randint(-8, -3)  # Velocidad aleatoria negativa para la bala
+        velocidad_bala = random.randint(-20, -5)  # Velocidad aleatoria negativa para la bala
         bala_disparada = True
 
 # Función para reiniciar la posición de la bala
@@ -157,7 +161,7 @@ def guardar_datos():
     datos_modelo.append((velocidad_bala, distancia, salto_hecho))
 
 # Funcion para graficar los datos
-def graficar_datos(df):
+def graficar_datos():
     # Separar datos según el valor de 'salto_hecho'
     x1 = [x for x, y, z in datos_modelo if z == 0]
     x2 = [y for x, y, z in datos_modelo if z == 0]
@@ -185,6 +189,38 @@ def graficar_datos(df):
 
     plt.show()
 
+#Funcion para hacer el decision tree
+def graficar_arbol():
+    # Separar datos
+    x1 = [x for x, y, z in datos_modelo]
+    x2 = [y for x, y, z in datos_modelo]
+    target0 = [z for x, y, z in datos_modelo]
+
+    # Definir características (X) y etiquetas (y)
+    X = list(zip(x1, x2))  # Las dos primeras columnas son las características
+    y = target0  # La tercera columna es la etiqueta
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Crear el clasificador de Árbol de Decisión
+    clf = DecisionTreeClassifier()
+
+    # Entrenar el modelo
+    clf.fit(X_train, y_train)
+
+    # Exportar el árbol de decisión en formato DOT para su visualización
+    dot_data = export_graphviz(clf, out_file=None, 
+                            feature_names=['Feature 1', 'Feature 2'],  
+                            class_names=['Clase 0', 'Clase 1'],  
+                            filled=True, rounded=True,  
+                            special_characters=True)  
+
+    # Crear el gráfico con graphviz
+    graph = graphviz.Source(dot_data)
+
+    # Mostrar el gráfico
+    graph.view()
+    
 # Función para pausar el juego y guardar los datos
 def pausa_juego():
     global pausa
@@ -211,13 +247,14 @@ def mostrar_menu():
                 if evento.key == pygame.K_a:
                     modo_auto = True
                     menu_activo = False
+                    graficar_arbol()
                 elif evento.key == pygame.K_m:
                     modo_auto = False
                     menu_activo = False
                 elif evento.key == pygame.K_g:
-                    modo_auto = True
+                    modo_auto = False
                     menu_activo = False
-                    graficar_datos(datos_modelo)
+                    graficar_datos()
                 elif evento.key == pygame.K_q:
                     print("Juego terminado. Datos recopilados:", datos_modelo)
                     pygame.quit()

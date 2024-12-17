@@ -1,0 +1,6 @@
+Se tiene un archivo llamado gameNN que es el archivo que usa pygames y una red neuronal para entrenar, el modelo recibe los datos del modo manual y ademas realiza la grafica de 
+los datos y del arbol de decision
+Me parece que es mucho mas lento que el del arbol de decision
+
+En la misma carpeta se tiene un archivo llamado gameDT que es el mismo juego entrenando con un arbol de decision, al igual que el anterior toma los datos del modo manual y los 
+usa para entrenar el arbol, se hace una prediccion en base a los datos de velocidad y distancia para saltar automaticamente
